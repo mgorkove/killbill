@@ -1,0 +1,130 @@
+apiVersion: v1
+items:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        service: db
+      name: db
+    spec:
+      ports:
+        - name: "3306"
+          port: 3306
+          targetPort: 3306
+      selector:
+        service: db
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        service: kaui
+      name: kaui
+    spec:
+      ports:
+        - name: "9090"
+          port: 9090
+          targetPort: 8080
+      selector:
+        service: kaui
+      type: LoadBalancer
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        service: killbill
+      name: killbill
+    spec:
+      ports:
+        - name: "8080"
+          port: 8080
+          targetPort: 8080
+      selector:
+        service: killbill
+      type: LoadBalancer
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        service: db
+      name: db
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          service: db
+      template:
+        metadata:
+          labels:
+            service: db
+        spec:
+          containers:
+            - env:
+                - name: MYSQL_ROOT_PASSWORD
+                  value: killbill
+              image: killbill/mariadb:0.22
+              name: db
+              ports:
+                - containerPort: 3306
+          restartPolicy: Always
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        service: kaui
+      name: kaui
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          service: kaui
+      template:
+        metadata:
+          creationTimestamp: null
+          labels:
+            service: kaui
+        spec:
+          containers:
+            - env:
+                - name: KAUI_CONFIG_DAO_PASSWORD
+                  value: killbill
+                - name: KAUI_CONFIG_DAO_URL
+                  value: jdbc:mysql://db:3306/kaui
+                - name: KAUI_CONFIG_DAO_USER
+                  value: root
+                - name: KAUI_KILLBILL_URL
+                  value: http://killbill:8080
+              image: killbill/kaui:2.0.9
+              name: kaui
+              ports:
+                - containerPort: 8080
+          restartPolicy: Always
+  - apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        service: killbill
+      name: killbill
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          service: killbill
+      template:
+        metadata:
+          labels:
+            service: killbill
+        spec:
+          containers:
+            - env:
+                - name: KILLBILL_DAO_PASSWORD
+                  value: killbill
+                - name: KILLBILL_DAO_URL
+                  value: jdbc:mysql://db:3306/killbill
+                - name: KILLBILL_DAO_USER
+                  value: root
+              image: killbill/killbill:0.22.26
+              name: killbill
+              ports:
+                - containerPort: 8080
+          restartPolicy: Always
+kind: List
